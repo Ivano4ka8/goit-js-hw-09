@@ -2,6 +2,9 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import Notiflix from 'notiflix';
 
+import { addLeadingZero } from './padstart';
+import { convertMs } from './convertMs';
+
 let timerId = null;
 let resultTime;
 
@@ -14,8 +17,6 @@ const secondsEl = document.querySelector('[data-seconds]');
 const spans = document.querySelectorAll('.value');
 const labels = document.querySelectorAll('.label');
 
-btnStartEl.addEventListener('click', onStart);
-
 const fp = flatpickr(inputEl, {
   enableTime: true,
   time_24hr: true,
@@ -23,51 +24,42 @@ const fp = flatpickr(inputEl, {
   minuteIncrement: 1,
   onClose(selectedDates) {
     if (selectedDates[0] <= Date.now()) {
+      btnStartEl.setAttribute('disabled', ' ');
       Notiflix.Notify.failure('Please choose a date in the future');
-      btnStartEl.setAttribute('disabled', 'true');
     } else {
+      Notiflix.Notify.success(
+        "You choose a right date, click on the button 'Start' "
+      );
       btnStartEl.removeAttribute('disabled');
+      btnStartEl.addEventListener('click', onStart);
     }
   },
 });
 
 function onStart() {
+  btnStartEl.setAttribute('disabled', ' ');
+  Notiflix.Notify.info('Timer is running');
+
   timerId = setInterval(() => {
     const selectedDate = new Date(inputEl.value);
     resultTime = selectedDate - Date.now();
-    const { days, hours, minutes, seconds } = convertMs(resultTime);
+
+    const { days, hours, minutes, seconds } = convertMs(resultTime, resultTime);
 
     daysEl.textContent = addLeadingZero(days);
     hoursEl.textContent = addLeadingZero(hours);
     minutesEl.textContent = addLeadingZero(minutes);
     secondsEl.textContent = addLeadingZero(seconds);
 
-    if (resultTime <= 1000) {
+    if (resultTime <= 0) {
+      Notiflix.Notify.info('The timer is ended. Please choose a new date');
       clearInterval(timerId);
-      spans.forEach(span => {
-        span.classList.add('stop-timer');
-      });
-      labels.forEach(label => {
-        label.classList.add('stop-timer');
-      });
+      daysEl.textContent = '00';
+      hoursEl.textContent = '00';
+      minutesEl.textContent = '00';
+      secondsEl.textContent = '00';
+      btnStartEl.removeAttribute('disabled');
+      return;
     }
   }, 1000);
-}
-
-function convertMs(ms) {
-  const second = 1000;
-  const minute = second * 60;
-  const hour = minute * 60;
-  const day = hour * 24;
-
-  const days = Math.floor(resultTime / day);
-  const hours = Math.floor((resultTime % day) / hour);
-  const minutes = Math.floor(((resultTime % day) % hour) / minute);
-  const seconds = Math.floor((((resultTime % day) % hour) % minute) / second);
-
-  return { days, hours, minutes, seconds };
-}
-
-function addLeadingZero(value) {
-  return `${value}`.padStart(2, '0');
 }
